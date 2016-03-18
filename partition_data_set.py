@@ -1,5 +1,6 @@
 from shutil import copyfile
 import os.path
+from scipy.misc import imread
 
 
 def setup():
@@ -33,3 +34,46 @@ def partition_data():
             else:
                 copyfile('cropped/'+filename, 'test_set/'+filename)
                 print filename+' in '+'test_set'
+                
+                
+def get_train_dict():
+    '''Return dictionary of training set where keys are labels (actors' names as 
+    lower case strings e.g. 'bracco') and values are lists of numpy arrays of 
+    images of that actor's face
+    '''
+    train_dict = {}
+    for file in os.listdir('training_set'):
+        label = file.split('.')[0].rstrip('1234567890')
+        im = imread('training_set/' + file, 1).flatten()
+        if not train_dict.has_key(label):
+            train_dict[label] = [im]
+        else:
+            train_dict[label].append(im)
+    return train_dict
+    
+def get_test_dict():
+    '''Return dictionary of test set where keys are labels (actors' names as 
+    lower case strings e.g. 'bracco') and values are lists of numpy arrays of 
+    images of that actor's face
+    '''
+    test_dict = {}
+    for file in os.listdir('test_set'):
+        label = file.split('.')[0].rstrip('1234567890')
+        im = imread('test_set/' + file, 1).flatten()
+        if not test_dict.has_key(label):
+            test_dict[label] = [im]
+        else:
+            test_dict[label].append(im)
+    return test_dict    
+    
+def get_dict_size(dic):
+    dict_size = 0
+    for key in dic:
+        dict_size += len(dic[key])
+    return dict_size
+    
+    
+    
+    
+    
+    
