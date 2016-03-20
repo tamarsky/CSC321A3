@@ -100,21 +100,20 @@ def get_train(M):
     
     
     for actor in M:
-        if not (actor == 'gilpin' or actor == 'bracco' or actor == 'harmon'):
-            array_M_actor = zeros((0, IMG_DIM,IMG_DIM,3))
-            for image in range(len(array(M[actor]))):
-                raw = ((array(M[actor])[image])/255.)
-                
-                x_dummy = (random.random((1,)+ xdim)/255.).astype(float32)
-                i = x_dummy.copy()
-                i[0,:,:,:] = (raw[:,:,:3]).astype(float32)
-                i = i-mean(i)
-                array_M_actor = vstack((array_M_actor, i ))
-            
-            batch_xs = vstack((batch_xs, array_M_actor )) # add image M['traink'][inx]
-            one_hot = actor_to_ohe[actor]
-            #print(one_hot)
-            batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M[actor]), 1))   ))
+        array_M_actor = zeros((0, IMG_DIM,IMG_DIM,3))
+        for image in range(len(array(M[actor]))):
+            raw = ((array(M[actor])[image])/255.)
+            x_dummy = (random.random((1,)+ xdim)/255.).astype(float32)
+        
+            i = x_dummy.copy()
+            i[0,:,:,:] = (raw[:,:,:3]).astype(float32)
+            i = i-mean(i)
+            array_M_actor = vstack((array_M_actor, i ))
+        
+        batch_xs = vstack((batch_xs, array_M_actor )) # add image M['traink'][inx]
+        one_hot = actor_to_ohe[actor]
+        #print(one_hot)
+        batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M[actor]), 1))   ))
     #print(batch_xs.shape)
     return batch_xs, batch_y_s
     
@@ -125,21 +124,20 @@ def get_train_batch(M, N):
 
     
     for actor in M: # for each actor
-        if not (actor == 'gilpin' or actor == 'bracco' or actor == 'harmon'):
-            train_size = len(M[actor]) # number of images for M[actor]
-            idx = array(random.permutation(train_size)[:n]) # array of n random indexes between 0 and train_si
-            array_M_actor = zeros((0, IMG_DIM,IMG_DIM,3))
-            for image in idx:
-                array_M_actor = vstack((array_M_actor, ((array(M[actor])[image])/255.)  ))
-    
-            batch_xs = vstack((batch_xs, array_M_actor )) # add image M['traink'][inx]
-            one_hot = actor_to_ohe[actor]
-            
-            # for x in batch_xs:
-            #     imshow(x.reshape((32,32)))
-            #     show()
-            
-            batch_y_s = vstack((batch_y_s,   tile(one_hot, (n, 1))   )) # add n OHE to batch_y_s with label at k
+        train_size = len(M[actor]) # number of images for M[actor]
+        idx = array(random.permutation(train_size)[:n]) # array of n random indexes between 0 and train_si
+        array_M_actor = zeros((0, IMG_DIM,IMG_DIM,3))
+        for image in idx:
+            array_M_actor = vstack((array_M_actor, ((array(M[actor])[image])/255.)  ))
+
+        batch_xs = vstack((batch_xs, array_M_actor )) # add image M['traink'][inx]
+        one_hot = actor_to_ohe[actor]
+        
+        # for x in batch_xs:
+        #     imshow(x.reshape((32,32)))
+        #     show()
+        
+        batch_y_s = vstack((batch_y_s,   tile(one_hot, (n, 1))   )) # add n OHE to batch_y_s with label at k
             
     return batch_xs, batch_y_s
 
@@ -181,12 +179,12 @@ def conv(input, kernel, biases, k_h, k_w, c_o, s_h, s_w,  padding="VALID", group
         conv = tf.concat(3, output_groups)
     return  tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list())
 
-x = tf.placeholder(tf.float32, [None, IMG_DIM, IMG_DIM, 3])
-y_ = tf.placeholder(tf.float32, [None, NUM_LABELS])
+x = tf.placeholder(tf.float32, [1, IMG_DIM, IMG_DIM, 3])
+y_ = tf.placeholder(tf.float32, [1, NUM_LABELS])
 
 
 
-x = tf.Variable(i)
+
 
 
 #conv1
@@ -303,8 +301,13 @@ sess.run(init)
 #for i in range(5):
 #    print class_names[inds[-1-i]], output[0, inds[-1-i]]
 xs, ys = get_train(M)
-conv4_output = sess.run(conv4, feed_dict={x: xs, y_: ys})
+conv4_outputs = zeros((0, 13,13,384))
+for i in range(len(list(xs))):
+    #x = xs[i]
+    conv4_output = sess.run(conv4, feed_dict={x: array(xs[i], ndmin=4)})
+    conv4_outputs = vstack((conv4_outputs, conv4_output))
 
+conv4_outputs = array(conv4_outputs)
 
 
 
