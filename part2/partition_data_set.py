@@ -12,6 +12,19 @@ def setup():
         os.mkdir('test_set')        
                 
 def partition_data():
+    '''
+    cropped_dirname = 'cropped/' -> for part 1
+    cropped_dirname = 'cropped_rgb/' -> for part 2'
+    
+    
+    '''
+    part2=True
+    part1=False
+    if part1:
+        cropped_dirname='cropped/'
+    if part2:
+        cropped_dirname='cropped_rgb/'
+    
     #partition data into Training set, Validation set, Test set
     setup()
     
@@ -22,17 +35,17 @@ def partition_data():
     counts = [0, 0, 0, 0, 0, 0]
     
     act_count = dict(zip(act_lower, counts))
-    for filename in os.listdir('cropped_rgb'):
+    for filename in os.listdir(cropped_dirname):
         if filename[:6] in act_lower:
             act_count[filename[:6]] += 1
             if act_count[filename[:6]] <= 70:
-                copyfile('cropped_rgb/'+filename, 'training_set/'+filename)
+                copyfile(cropped_dirname+filename, 'training_set/'+filename)
                 print filename+' in '+'training_set'
             elif act_count[filename[:6]]%2 == 0:
-                copyfile('cropped_rgb/'+filename, 'validation_set/'+filename)
+                copyfile(cropped_dirname+filename, 'validation_set/'+filename)
                 print filename+' in '+'validation_set'                
             else:
-                copyfile('cropped_rgb/'+filename, 'test_set/'+filename)
+                copyfile(cropped_dirname+filename, 'test_set/'+filename)
                 print filename+' in '+'test_set'
                 
                 

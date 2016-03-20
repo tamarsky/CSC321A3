@@ -29,7 +29,7 @@ import partition_data_set
 
 import tensorflow as tf
 
-from caffe_classes import class_names
+#from caffe_classes import class_names
 
 IMG_DIM = 227
 NUM_LABELS = 6
@@ -45,7 +45,7 @@ radcliffe   [0,0,0,0,1,0]
 vartan      [0,0,0,0,0,1]
 '''
 
-id_matrix = identity(NUM_LABELS) # 6 actors
+id_matrix = identity(6)
 actor_to_ohe = {'bracco':id_matrix[0], 
                 'butler':id_matrix[1], 
                 'gilpin':id_matrix[2], 
@@ -64,10 +64,10 @@ ydim = train_y.shape[1]
 ################################################################################
 #Read Image
 
-x_dummy = (random.random((1,)+ xdim)/255.).astype(float32)
-i = x_dummy.copy()
-i[0,:,:,:] = (imread("poodle.png")[:,:,:3]).astype(float32)
-i = i-mean(i)
+# x_dummy = (random.random((1,)+ xdim)/255.).astype(float32)
+# i = x_dummy.copy()
+# i[0,:,:,:] = (imread("poodle.png")[:,:,:3]).astype(float32)
+# i = i-mean(i)
 
 # turn all images into a viable input
 for actor in M:
@@ -79,15 +79,19 @@ for actor in M:
         i = image
 
 def get_test(M):
-    batch_xs = zeros((0, IMG_DIM*IMG_DIM))
+    batch_xs = zeros((0, IMG_DIM*IMG_DIM*3))
     batch_y_s = zeros( (0, NUM_LABELS))
-    
-    
+
     for actor in M_test:
-        batch_xs = vstack((batch_xs, ((array(M_test[actor])[:])/255.)  ))
+        array_M_test_actor = zeros((0, IMG_DIM*IMG_DIM*3))
+        for image in range(len(array(M_test[actor]))):
+            array_M_test_actor = vstack((array_M_test_actor, ((array(M_test[actor])[image])/255.) ))
+        batch_xs = vstack((batch_xs, array_M_test_actor  ))
+        print batch_xs.shape
         one_hot = actor_to_ohe[actor]
         batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M_test[actor]), 1))   ))
     return batch_xs, batch_y_s
+
 
 
 def get_train(M):
@@ -96,46 +100,47 @@ def get_train(M):
     
     
     for actor in M:
-        print(actor)
-        for img in M[actor]:
-            batch_xs = vstack((batch_xs, ((array(M[actor])[img])/255.)  ))
-        #batch_xs = vstack((batch_xs, ((array(M[actor])[:])/255.)  ))
-        one_hot = actor_to_ohe[actor]
-        batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M[actor]), 1))   ))
-    
+        if not (actor == 'gilpin' or actor == 'bracco' or actor == 'harmon'):
+            array_M_actor = zeros((0, IMG_DIM,IMG_DIM,3))
+            for image in range(len(array(M[actor]))):
+                raw = ((array(M[actor])[image])/255.)
+                
+                x_dummy = (random.random((1,)+ xdim)/255.).astype(float32)
+                i = x_dummy.copy()
+                i[0,:,:,:] = (raw[:,:,:3]).astype(float32)
+                i = i-mean(i)
+                array_M_actor = vstack((array_M_actor, i ))
+            
+            batch_xs = vstack((batch_xs, array_M_actor )) # add image M['traink'][inx]
+            one_hot = actor_to_ohe[actor]
+            #print(one_hot)
+            batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M[actor]), 1))   ))
+    #print(batch_xs.shape)
     return batch_xs, batch_y_s
     
 def get_train_batch(M, N):
     n = N/6
-    batch_xs = zeros((0, IMG_DIM, IMG_DIM, 3))
+    batch_xs = zeros((0, IMG_DIM,IMG_DIM,3))
     batch_y_s = zeros( (0, NUM_LABELS))
 
     
     for actor in M: # for each actor
         if not (actor == 'gilpin' or actor == 'bracco' or actor == 'harmon'):
-            print(actor)
-            print(batch_xs.shape)
-            
             train_size = len(M[actor]) # number of images for M[actor]
             idx = array(random.permutation(train_size)[:n]) # array of n random indexes between 0 and train_si
-            
-            for i in idx:
-                print(i)
-                print(((array(M[actor])[i])/255.).shape)
-            # old = batch_xs
-            # all = array(M[actor])
-            # new = all[idx]
-            # new_norm = new/255.
-            # batch_xs = concatenate((batch_xs, new), axis=0)
-            batch_xs = vstack((batch_xs, ((array(M[actor])[idx])/255.)  )) # add image M['traink'][inx]
+            array_M_actor = zeros((0, IMG_DIM,IMG_DIM,3))
+            for image in idx:
+                array_M_actor = vstack((array_M_actor, ((array(M[actor])[image])/255.)  ))
+    
+            batch_xs = vstack((batch_xs, array_M_actor )) # add image M['traink'][inx]
             one_hot = actor_to_ohe[actor]
             
             # for x in batch_xs:
             #     imshow(x.reshape((32,32)))
             #     show()
-        
-
-        
+            
+            batch_y_s = vstack((batch_y_s,   tile(one_hot, (n, 1))   )) # add n OHE to batch_y_s with label at k
+            
     return batch_xs, batch_y_s
 
 ################################################################################
@@ -176,9 +181,13 @@ def conv(input, kernel, biases, k_h, k_w, c_o, s_h, s_w,  padding="VALID", group
         conv = tf.concat(3, output_groups)
     return  tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list())
 
+x = tf.placeholder(tf.float32, [None, IMG_DIM, IMG_DIM, 3])
+y_ = tf.placeholder(tf.float32, [None, NUM_LABELS])
+
 
 
 x = tf.Variable(i)
+
 
 #conv1
 #conv(11, 11, 96, 4, 4, padding='VALID', name='conv1')
@@ -293,25 +302,12 @@ sess.run(init)
 #inds = argsort(output)[0,:]
 #for i in range(5):
 #    print class_names[inds[-1-i]], output[0, inds[-1-i]]
-
-x = tf.placeholder(tf.float32, [None, IMG_DIM, IMG_DIM,3])
-y_ = tf.placeholder(tf.float32, [None, NUM_LABELS])
-
+xs, ys = get_train(M)
+conv4_output = sess.run(conv4, feed_dict={x: xs, y_: ys})
 
 
-for actor in M:
-    for image in M[actor]:
-        batch_xs, batch_ys = get_train_batch(M, 60)
+
+
         
-    
-            
-    
-        #print(sum(batch_ys[:,1]))
-        #print(batch_ys)
-        # for i in range(10):
-        #     print(batch_ys[i])
-        #     imshow(batch_xs[i].reshape((IMG_DIM,IMG_DIM)))
-        #     show()
         
-        conv4_output = sess.run(conv4, feed_dict={x: batch_xs, y_: batch_ys})
             
