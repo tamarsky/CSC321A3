@@ -22,7 +22,7 @@ def partition_data():
     counts = [0, 0, 0, 0, 0, 0]
     
     act_count = dict(zip(act_lower, counts))
-    for filename in os.listdir('cropped'):
+    for filename in os.listdir('cropped_rgb'):
         if filename[:6] in act_lower:
             act_count[filename[:6]] += 1
             if act_count[filename[:6]] <= 70:
