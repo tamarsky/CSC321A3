@@ -152,8 +152,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 test_x, test_y = get_test(M)
 
 
-acc_test = []
-acc_val
+acc = []
+
 for i in range(5000):
     #print i  
     batch_xs, batch_ys = get_train_batch(M, 60)
