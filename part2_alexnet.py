@@ -76,7 +76,7 @@ for actor in M:
         image = image - mean(image)
         i = image
 
-def get_test(M):
+def get_test(M_test):
     batch_xs = zeros((0, IMG_DIM*IMG_DIM*3))
     batch_y_s = zeros( (0, NUM_LABELS))
 
@@ -85,12 +85,24 @@ def get_test(M):
         for image in range(len(array(M_test[actor]))):
             array_M_test_actor = vstack((array_M_test_actor, ((array(M_test[actor])[image])/255.) ))
         batch_xs = vstack((batch_xs, array_M_test_actor  ))
-        print batch_xs.shape
+        #print batch_xs.shape
         one_hot = actor_to_ohe[actor]
         batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M_test[actor]), 1))   ))
     return batch_xs, batch_y_s
 
+def get_validation(M_val):
+    xs = zeros((0, IMG_DIM*IMG_DIM*3))
+    y_s = zeros( (0, NUM_LABELS))
 
+    for actor in M_val:
+        array_M_val_actor = zeros((0, IMG_DIM*IMG_DIM*3))
+        for image in range(len(array(M_val[actor]))):
+            array_M_val_actor = vstack((array_M_val_actor, ((array(M_val[actor])[image])/255.) ))
+        xs = vstack((xs, array_M_val_actor  ))
+        #print xs.shape
+        one_hot = actor_to_ohe[actor]
+        y_s = vstack((y_s,   tile(one_hot, (len(M_val[actor]), 1))   ))
+    return xs, y_s
 
 def get_train(M):
     batch_xs = zeros((0, IMG_DIM, IMG_DIM, 3))

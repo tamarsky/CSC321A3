@@ -26,7 +26,7 @@ from scipy.ndimage import filters
 import urllib
 from numpy import random
 import partition_data_set
-# import part2_alexnet
+
 import scipy.io as sc
 
 import cPickle
@@ -46,6 +46,7 @@ import tensorflow as tf
 
 actors = ['gilpin', 'butler', 'vartan', 'radcliffe', 'harmon', 'bracco']
 
+# import part2_alexnet
 # xs = part2_alexnet.conv4_outputs # not the same as feed_dict xs in part2_alexnet
 # ys = part2_alexnet.ys 
 
@@ -77,27 +78,33 @@ def make_conv4_dicts(xs,ys):
     ids = array(random.permutation(len(xs)))
     ohe_ind_to_actor = {0:'bracco', 1:'butler', 2:'gilpin', 3:'harmon', 4:'radcliffe',5:'vartan'}
     for i in ids:
-        if len(M[ohe_ind_to_actor[list(ys[i]).index(1)]]) < 55:
+        if len(M[ohe_ind_to_actor[list(ys[i]).index(1)]]) < 50:
             M[ohe_ind_to_actor[list(ys[i]).index(1)]].append(xs[i])
+        elif len(M[ohe_ind_to_actor[list(ys[i]).index(1)]]) < 60:
+            M_val[ohe_ind_to_actor[list(ys[i]).index(1)]].append(xs[i])
         else:
             M_test[ohe_ind_to_actor[list(ys[i]).index(1)]].append(xs[i])
             
-    return M, M_test
+    return M, M_val, M_test
         
 # make mat files for M & M_test - run on first run
-# M, M_test  = make_conv4_dicts(xs, ys)
+# M, M_val, M_test  = make_conv4_dicts(xs, ys)
 # sc.savemat('conv4dict.mat', M)
+# sc.savemat('conv4dictVal.mat', M_val)
 # sc.savemat('conv4dictTest.mat', M_test)
 # print('done!')
 
 M_loaded = loadmat("conv4dict.mat")
 M_test_loaded = loadmat("conv4dictTest.mat")
+M_val_loaded = loadmat("conv4dictVal.mat")
 
 M = {}
 M_test = {}
+M_val = {}
 for actor in actors:
     M[actor] = M_loaded[actor]
     M_test[actor] = M_test_loaded[actor]
+    M_val[actor] = M_val_loaded[actor]
 
 def get_train_batch(M, N):
     n = N/6
@@ -133,30 +140,30 @@ def get_test(M_test):
 
 
 def get_train(M):
-    batch_xs = zeros((0, IMG_DIM*IMG_DIM*384))
-    batch_y_s = zeros( (0, NUM_LABELS))
+    xs = zeros((0, IMG_DIM*IMG_DIM*384))
+    y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M:
         images = ((array(M[actor]))/255.)  
         images = images.reshape((70, 13*13*384))
-        batch_xs = vstack((batch_xs, images))
+        xs = vstack((xs, images))
         one_hot = actor_to_ohe[actor]
 
-        batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M[actor]), 1))   ))
+        y_s = vstack((y_s,   tile(one_hot, (len(M[actor]), 1))   ))
 
-    return batch_xs, batch_y_s
+    return xs, y_s
 
 def get_validation(M_val):
-    xs = zeros((0, IMG_DIM*IMG_DIM*DIM3))
+    xs = zeros((0, IMG_DIM*IMG_DIM*384))
     y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M_val:
-        image = ((array(M_val[actor])[:])/255.) 
-        image = image.reshape((image.shape[0], IMG_DIM*IMG_DIM*DIM3))
+        images = ((array(M_val[actor]))/255.)  
+        images = images.reshape((images.shape[0], IMG_DIM*IMG_DIM*384))
         
-        xs = vstack((xs, image  ))
+        xs = vstack((xs, images  ))
         one_hot = actor_to_ohe[actor]
         y_s = vstack((y_s,   tile(one_hot, (len(M_val[actor]), 1))   ))
     return xs, y_s
@@ -165,7 +172,7 @@ def get_validation(M_val):
 
 x = tf.placeholder(tf.float32, [None, IMG_DIM*IMG_DIM*384])
 
-W = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM*384, 6], stddev=0.01))
+W = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM*384, 6], stddev=0.01))*10.
 b = tf.Variable(tf.random_normal([6], stddev=0.01))
 layer = tf.matmul(x, W)+b
 
@@ -174,7 +181,7 @@ y_ = tf.placeholder(tf.float32, [None, NUM_LABELS])
 
 
 
-lam = 0.00085
+lam = 0.0085
 decay_penalty =lam*tf.reduce_sum(tf.square(W))
 NLL = -tf.reduce_sum(y_*tf.log(y))+decay_penalty
 
@@ -193,29 +200,29 @@ correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
 # cast tf.equal output to 1s and 0s
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 test_xs, test_ys = get_test(M_test)
-# val_x, test_y = get_val(M_val)
+val_xs, val_ys = get_validation(M_val)
 
 acc_train = []
-# acc_val = []
+acc_val = []
 acc_test = []
 
-for i in range(500):
+# W_summary = tf.image_summary(str(W), W)
+# summary_writer = tf.train.SummaryWriter('/tmp/logs', sess.graph_def)
+
+for i in range(1000):
     #print i  
     batch_xs, batch_ys = get_train_batch(M, 60)
-    batch_xs /= 255.
-    sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
+    result = sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
     
     if i % 10 == 0:
         print ("i=",i)
         print "Test:", sess.run(accuracy, feed_dict={x: test_xs, y_: test_ys})
         
-        # acc_val.append(accuracy.eval(feed_dict={x: val_x, y_: val_y}, session=sess))
+        acc_val.append(accuracy.eval(feed_dict={x: val_xs, y_: val_ys}, session=sess))
         acc_test.append(accuracy.eval(feed_dict={x: test_xs, y_: test_ys}, session=sess))
-        
-        #print(accuracy.eval(feed_dict={x: batch_xs, y_: batch_ys}, session=sess))
+
         xs, ys = get_train(M)
-        xs /= 255.
-        #print(accuracy.eval(feed_dict={x: batch_xs, y_: batch_ys}, session=sess))
+
         print "Train:", sess.run(accuracy, feed_dict={x: batch_xs, y_: batch_ys})
         acc_train.append(accuracy.eval(feed_dict={x: xs, y_: ys}, session=sess))
         print(sess.run(NLL, feed_dict={x: test_xs, y_:test_ys}))
@@ -223,6 +230,8 @@ for i in range(500):
         
         
         #print "Penalty:", sess.run(decay_penalty)
+        # 
+        # summary_writer.add_summary(result[0], i)
         
     
     
@@ -234,13 +243,13 @@ plt.xlabel('Iteration')
 plt.ylabel('Accuracy')
 savefig('p2Iteration_vs_Training')
 
-# 
-# plt.figure(2)
-# plt.plot(acc_val)
-# plt.title('Iterations vs. Validation Accuracy')
-# plt.xlabel('Iteration')
-# plt.ylabel('Accuracy')
-# savefig('p2Iteration_vs_Validation')
+
+plt.figure(2)
+plt.plot(acc_val)
+plt.title('Iterations vs. Validation Accuracy')
+plt.xlabel('Iteration')
+plt.ylabel('Accuracy')
+savefig('p2Iteration_vs_Validation')
 
 
 plt.figure(3)
