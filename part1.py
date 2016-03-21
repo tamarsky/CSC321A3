@@ -32,6 +32,8 @@ from scipy.io import loadmat
 
 IMG_DIM = 32
 NUM_LABELS = 6
+DIM3 = 3
+
 
 t = int(time.time())
 #t = 1454219613
@@ -45,6 +47,8 @@ M = partition_data_set.get_train_dict(part=1) # need to specify which part
 M_test = partition_data_set.get_test_dict(part=1)
 M_val = partition_data_set.get_val_dict(part=1)
 
+dim3 = ((array(M['harmon'])[:])/255.).shape[2]/(IMG_DIM*IMG_DIM)
+print dim3
 
 ''' One Hot Encoding: alphabetical order
 bracco      [1,0,0,0,0,0]
@@ -67,63 +71,81 @@ actor_to_ohe = {'bracco':id_matrix[0],
 
 def get_train_batch(M, N):
     n = N/6
-    batch_xs = zeros((0, IMG_DIM*IMG_DIM))
+    batch_xs = zeros((0, IMG_DIM*IMG_DIM*DIM3))
     batch_y_s = zeros( (0, NUM_LABELS))
 
     
     for actor in M: # for each actor
         train_size = len(M[actor]) # number of images for M[actor]
         idx = array(random.permutation(train_size)[:n]) # array of n random indexes between 0 and train_si
-        batch_xs = vstack((batch_xs, ((array(M[actor])[idx])/255.)  )) # add image M['traink'][inx]
+       
+        images = ((array(M[actor])[idx])/255.) 
+        images = images.reshape((images.shape[0], IMG_DIM*IMG_DIM*DIM3))
+        
+        batch_xs = vstack((batch_xs, images  ))
+        #batch_xs = vstack((batch_xs, ((array(M[actor])[idx])/255.)  )) # add image M['traink'][inx]
         one_hot = actor_to_ohe[actor]
         
         batch_y_s = vstack((batch_y_s,   tile(one_hot, (n, 1))   )) # add n OHE to batch_y_s with label at k
-        
+    #print "Got train batch!", batch_xs.shape, batch_y_s.shape
     return batch_xs, batch_y_s
     
 
 def get_test(M):
-    xs = zeros((0, IMG_DIM*IMG_DIM))
+
+    xs = zeros((0, IMG_DIM*IMG_DIM*DIM3))
     y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M_test:
-        xs = vstack((xs, ((array(M_test[actor])[:])/255.)  ))
+        image = ((array(M_test[actor])[:])/255.) 
+        image = image.reshape((image.shape[0], IMG_DIM*IMG_DIM*DIM3))
+        
+        xs = vstack((xs, image  ))
         one_hot = actor_to_ohe[actor]
         y_s = vstack((y_s,   tile(one_hot, (len(M_test[actor]), 1))   ))
+    #print "Got test!", xs.shape, y_s.shape
     return xs, y_s
 
 
 def get_train(M):
-    xs = zeros((0, IMG_DIM*IMG_DIM))
+    xs = zeros((0, IMG_DIM*IMG_DIM*DIM3))
     y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M:
-        xs = vstack((xs, ((array(M[actor])[:])/255.)  ))
+        image = ((array(M[actor])[:])/255.) 
+        image = image.reshape((image.shape[0], IMG_DIM*IMG_DIM*DIM3))
+        
+        xs = vstack((xs, image  ))
         one_hot = actor_to_ohe[actor]
         y_s = vstack((y_s,   tile(one_hot, (len(M[actor]), 1))   ))
+    #print "Got train!", xs.shape, y_s.shape
     return xs, y_s
 
 
 def get_validation(M):
-    xs = zeros((0, IMG_DIM*IMG_DIM))
+    xs = zeros((0, IMG_DIM*IMG_DIM*DIM3))
     y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M_val:
-        xs = vstack((xs, ((array(M_val[actor])[:])/255.)  ))
+        image = ((array(M_val[actor])[:])/255.) 
+        image = image.reshape((image.shape[0], IMG_DIM*IMG_DIM*DIM3))
+        
+        xs = vstack((xs, image  ))
         one_hot = actor_to_ohe[actor]
         y_s = vstack((y_s,   tile(one_hot, (len(M_val[actor]), 1))   ))
+    #print "Got validation!", xs.shape, y_s.shape
     return xs, y_s
         
 
 
-x = tf.placeholder(tf.float32, [None, IMG_DIM*IMG_DIM])
+x = tf.placeholder(tf.float32, [None, IMG_DIM*IMG_DIM*DIM3])
 
 
 nhid = 300
-W0 = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM, nhid], stddev=0.01))
+W0 = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM*DIM3, nhid], stddev=0.01))
 b0 = tf.Variable(tf.random_normal([nhid], stddev=0.01))
 
 W1 = tf.Variable(tf.random_normal([nhid, NUM_LABELS], stddev=0.01))
@@ -143,7 +165,7 @@ lam = 0.00000
 decay_penalty =lam*tf.reduce_sum(tf.square(W0))+lam*tf.reduce_sum(tf.square(W1))
 NLL = -tf.reduce_sum(y_*tf.log(y))+decay_penalty
 
-alpha = 0.00005
+alpha = 0.0001
 train_step = tf.train.GradientDescentOptimizer(alpha).minimize(NLL)
 
 init = tf.initialize_all_variables()
@@ -166,7 +188,7 @@ acc_train = []
 acc_val = []
 acc_test = []
 
-for i in range(15000):
+for i in range(5000):
     #print i  
     batch_xs, batch_ys = get_train_batch(M, 60)
     result = sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
@@ -200,23 +222,23 @@ for i in range(15000):
 
 plt.figure(1)
 plt.plot(acc_train)
-plt.title('Iterations vs. Training Accuracy for alpha = ' + str(alpha))
+plt.title('Iterations vs. Training Accuracy')
 plt.xlabel('Iteration')
 plt.ylabel('Accuracy')
-savefig('Iter_Train_'+str(alpha))
+savefig('Iteration_vs_Training')
 
 
 plt.figure(2)
 plt.plot(acc_val)
-plt.title('Iterations vs. Validation Accuracy for alpha = ' + str(alpha))
+plt.title('Iterations vs. Validation Accuracy')
 plt.xlabel('Iteration')
 plt.ylabel('Accuracy')
-savefig('Iter_Val_'+str(alpha))
+savefig('Iteration_vs_Validation')
 
 
 plt.figure(3)
 plt.plot(acc_test)
-plt.title('Iterations vs. Test Accuracy for alpha = ' + str(alpha))
+plt.title('Iterations vs. Test Accuracy')
 plt.xlabel('Iteration')
 plt.ylabel('Accuracy')
-savefig('Iter_Test_'+str(alpha))
+savefig('Iteration_vs_Test')

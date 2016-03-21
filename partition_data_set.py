@@ -49,16 +49,17 @@ def get_train_dict(part):
     images of that actor's face
     '''
     if part ==1:
-        gray = 1 # grayscale
+        gray = 0 # grayscale
     elif part == 2:
         gray = 0 # not grayscale
         
     train_dict = {}
     for file in os.listdir(str(part)+'training_set'):
         label = file.split('.')[0].rstrip('1234567890')
-        im = imread(str(part)+'training_set/' + file, gray)
+        im = imread(str(part)+'training_set/' + file, gray)[:,:,:3]
         if part == 1:
-            im = im.flatten()
+            pass
+           # im = im.flatten()
         if not train_dict.has_key(label):
             train_dict[label] = [im]
         else:
@@ -71,16 +72,17 @@ def get_test_dict(part):
     images of that actor's face
     '''
     if part ==1:
-        gray = 1 # grayscale
+        gray = 0 # grayscale
     elif part == 2:
         gray = 0 # not grayscale
         
     test_dict = {}
     for file in os.listdir(str(part)+'test_set'):
         label = file.split('.')[0].rstrip('1234567890')
-        im = imread(str(part)+'test_set/' + file, gray)
+        im = imread(str(part)+'test_set/' + file, gray)[:,:,:3]
         if part == 1:
-            im = im.flatten()
+            pass
+       #     im = im.flatten()
         if not test_dict.has_key(label):
             test_dict[label] = [im]
         else:
@@ -93,16 +95,17 @@ def get_val_dict(part):
     images of that actor's face
     '''
     if part ==1:
-        gray = 1 # grayscale
+        gray = 0 # grayscale
     elif part == 2:
         gray = 0 # not grayscale
         
     val_dict = {}
     for file in os.listdir(str(part)+'validation_set'):
         label = file.split('.')[0].rstrip('1234567890')
-        im = imread(str(part)+'validation_set/' + file, gray)
+        im = imread(str(part)+'validation_set/' + file, gray)[:,:,:3]
         if part == 1:
-            im = im.flatten()
+            pass
+     #       im = im.flatten()
         if not val_dict.has_key(label):
             val_dict[label] = [im]
         else:
