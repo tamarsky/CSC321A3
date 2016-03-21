@@ -141,15 +141,15 @@ def get_validation(M):
         
 
 
-x = tf.placeholder(tf.float32, [None, IMG_DIM*IMG_DIM*DIM3])
+x = tf.placeholder(tf.float32, [None, IMG_DIM*IMG_DIM*DIM3])/255.
 
 
 nhid = 300
-W0 = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM*DIM3, nhid], stddev=0.01))
-b0 = tf.Variable(tf.random_normal([nhid], stddev=0.01))
+W0 = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM*DIM3, nhid], stddev=0.001))
+b0 = tf.Variable(tf.random_normal([nhid], stddev=0.001))
 
-W1 = tf.Variable(tf.random_normal([nhid, NUM_LABELS], stddev=0.01))
-b1 = tf.Variable(tf.random_normal([NUM_LABELS], stddev=0.01))
+W1 = tf.Variable(tf.random_normal([nhid, NUM_LABELS], stddev=0.001))
+b1 = tf.Variable(tf.random_normal([NUM_LABELS], stddev=0.001))
 
 
 layer1 = tf.nn.tanh(tf.matmul(x, W0)+b0)
@@ -161,11 +161,11 @@ y_ = tf.placeholder(tf.float32, [None, NUM_LABELS])
 
 
 
-lam = 0.00000
+lam = 0.00085
 decay_penalty =lam*tf.reduce_sum(tf.square(W0))+lam*tf.reduce_sum(tf.square(W1))
 NLL = -tf.reduce_sum(y_*tf.log(y))+decay_penalty
 
-alpha = 0.0001
+alpha = 0.005
 train_step = tf.train.GradientDescentOptimizer(alpha).minimize(NLL)
 
 init = tf.initialize_all_variables()
@@ -209,14 +209,20 @@ for i in range(5000):
         # print "Penalty:", sess.run(decay_penalty)
     
     
-        # snapshot = {}
-        # snapshot["W0"] = sess.run(W0)
-        # snapshot["W1"] = sess.run(W1)
-        # snapshot["b0"] = sess.run(b0)
-        # snapshot["b1"] = sess.run(b1)
-        # 
-        # imshow(snapshot["W0"][:,150].reshape((IMG_DIM,IMG_DIM)))
-        # show()
+    if i == 3000:
+        snapshot = {}
+        snapshot["W0"] = sess.run(W0)
+        snapshot["W1"] = sess.run(W1)
+        snapshot["b0"] = sess.run(b0)
+        snapshot["b1"] = sess.run(b1)
+        
+        for i in range(0, 300, 10):
+            print(i)
+            img = snapshot["W0"][:,i].reshape((IMG_DIM, IMG_DIM, 3))
+            r, g, b = img[:,:,0], img[:,:,1], img[:,:,2]
+            gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
+            imshow (gray/255)
+            show()
     
         #cPickle.dump(snapshot,  open("new_snapshot"+str(i)+".pkl", "w"))
 
