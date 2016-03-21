@@ -41,8 +41,9 @@ random.seed(t)
 import tensorflow as tf
 
 # M = {'butler': [..., [numpy.array], ...], 'radcliffe': [...]}
-M = partition_data_set.get_train_dict()
-M_test = partition_data_set.get_test_dict()
+M = partition_data_set.get_train_dict(part=1) # need to specify which part
+M_test = partition_data_set.get_test_dict(part=1)
+M_val = partition_data_set.get_val_dict(part=1)
 
 
 ''' One Hot Encoding: alphabetical order
@@ -76,39 +77,45 @@ def get_train_batch(M, N):
         batch_xs = vstack((batch_xs, ((array(M[actor])[idx])/255.)  )) # add image M['traink'][inx]
         one_hot = actor_to_ohe[actor]
         
-        # for x in batch_xs:
-        #     imshow(x.reshape((32,32)))
-        #     show()
-        
         batch_y_s = vstack((batch_y_s,   tile(one_hot, (n, 1))   )) # add n OHE to batch_y_s with label at k
         
     return batch_xs, batch_y_s
     
 
 def get_test(M):
-    batch_xs = zeros((0, IMG_DIM*IMG_DIM))
-    batch_y_s = zeros( (0, NUM_LABELS))
+    xs = zeros((0, IMG_DIM*IMG_DIM))
+    y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M_test:
-        batch_xs = vstack((batch_xs, ((array(M_test[actor])[:])/255.)  ))
+        xs = vstack((xs, ((array(M_test[actor])[:])/255.)  ))
         one_hot = actor_to_ohe[actor]
-        batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M_test[actor]), 1))   ))
-    return batch_xs, batch_y_s
+        y_s = vstack((y_s,   tile(one_hot, (len(M_test[actor]), 1))   ))
+    return xs, y_s
 
 
 def get_train(M):
-    batch_xs = zeros((0, IMG_DIM*IMG_DIM))
-    batch_y_s = zeros( (0, NUM_LABELS))
+    xs = zeros((0, IMG_DIM*IMG_DIM))
+    y_s = zeros( (0, NUM_LABELS))
     
     
     for actor in M:
-        batch_xs = vstack((batch_xs, ((array(M[actor])[:])/255.)  ))
+        xs = vstack((xs, ((array(M[actor])[:])/255.)  ))
         one_hot = actor_to_ohe[actor]
-        #print(one_hot)
-        batch_y_s = vstack((batch_y_s,   tile(one_hot, (len(M[actor]), 1))   ))
-    #print(batch_xs.shape)
-    return batch_xs, batch_y_s
+        y_s = vstack((y_s,   tile(one_hot, (len(M[actor]), 1))   ))
+    return xs, y_s
+
+
+def get_validation(M):
+    xs = zeros((0, IMG_DIM*IMG_DIM))
+    y_s = zeros( (0, NUM_LABELS))
+    
+    
+    for actor in M_val:
+        xs = vstack((xs, ((array(M_val[actor])[:])/255.)  ))
+        one_hot = actor_to_ohe[actor]
+        y_s = vstack((y_s,   tile(one_hot, (len(M_val[actor]), 1))   ))
+    return xs, y_s
         
 
 
@@ -136,7 +143,8 @@ lam = 0.00000
 decay_penalty =lam*tf.reduce_sum(tf.square(W0))+lam*tf.reduce_sum(tf.square(W1))
 NLL = -tf.reduce_sum(y_*tf.log(y))+decay_penalty
 
-train_step = tf.train.GradientDescentOptimizer(0.0005).minimize(NLL)
+alpha = 0.00005
+train_step = tf.train.GradientDescentOptimizer(alpha).minimize(NLL)
 
 init = tf.initialize_all_variables()
 sess = tf.Session()
@@ -149,37 +157,31 @@ sess.run(init)
 correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
 # cast tf.equal output to 1s and 0s
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-test_x, test_y = get_test(M)
+
+test_x, test_y = get_test(M_test)
+val_x, val_y = get_validation(M_val)
 
 
-acc = []
+acc_train = []
+acc_val = []
+acc_test = []
 
-for i in range(5000):
+for i in range(15000):
     #print i  
     batch_xs, batch_ys = get_train_batch(M, 60)
-    
-  
-        
-  
-    #print(sum(batch_ys[:,1]))
-    #print(batch_ys)
-    # for i in range(10):
-    #     print(batch_ys[i])
-    #     imshow(batch_xs[i].reshape((IMG_DIM,IMG_DIM)))
-    #     show()
-    
     result = sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
-    
-    
 
-  
     if i % 100 == 0:
         print ("i=",i)
         print "Test:", sess.run(accuracy, feed_dict={x: test_x, y_: test_y})
-        acc.append(accuracy.eval(feed_dict={x: batch_xs, y_: batch_ys}, session=sess))
-        batch_xs, batch_ys = get_train(M)
+        
+        acc_val.append(accuracy.eval(feed_dict={x: val_x, y_: val_y}, session=sess))
+        acc_test.append(accuracy.eval(feed_dict={x: test_x, y_: test_y}, session=sess))
+        
         #print(accuracy.eval(feed_dict={x: batch_xs, y_: batch_ys}, session=sess))
+        batch_xs, batch_ys = get_train(M)
         print "Train:", sess.run(accuracy, feed_dict={x: batch_xs, y_: batch_ys})
+        acc_train.append(accuracy.eval(feed_dict={x: batch_xs, y_: batch_ys}, session=sess))
         
         
         # print "Penalty:", sess.run(decay_penalty)
@@ -197,5 +199,24 @@ for i in range(5000):
         #cPickle.dump(snapshot,  open("new_snapshot"+str(i)+".pkl", "w"))
 
 plt.figure(1)
-plt.plot(acc)
-show()
+plt.plot(acc_train)
+plt.title('Iterations vs. Training Accuracy for alpha = ' + str(alpha))
+plt.xlabel('Iteration')
+plt.ylabel('Accuracy')
+savefig('Iter_Train_'+str(alpha))
+
+
+plt.figure(2)
+plt.plot(acc_val)
+plt.title('Iterations vs. Validation Accuracy for alpha = ' + str(alpha))
+plt.xlabel('Iteration')
+plt.ylabel('Accuracy')
+savefig('Iter_Val_'+str(alpha))
+
+
+plt.figure(3)
+plt.plot(acc_test)
+plt.title('Iterations vs. Test Accuracy for alpha = ' + str(alpha))
+plt.xlabel('Iteration')
+plt.ylabel('Accuracy')
+savefig('Iter_Test_'+str(alpha))

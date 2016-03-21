@@ -87,6 +87,28 @@ def get_test_dict(part):
             test_dict[label].append(im)
     return test_dict    
     
+def get_val_dict(part):
+    '''Return dictionary of validation set where keys are labels (actors' names as 
+    lower case strings e.g. 'bracco') and values are lists of numpy arrays of 
+    images of that actor's face
+    '''
+    if part ==1:
+        gray = 1 # grayscale
+    elif part == 2:
+        gray = 0 # not grayscale
+        
+    val_dict = {}
+    for file in os.listdir(str(part)+'validation_set'):
+        label = file.split('.')[0].rstrip('1234567890')
+        im = imread(str(part)+'validation_set/' + file, gray)
+        if part == 1:
+            im = im.flatten()
+        if not val_dict.has_key(label):
+            val_dict[label] = [im]
+        else:
+            val_dict[label].append(im)
+    return val_dict    
+
 def get_dict_size(dic):
     dict_size = 0
     for key in dic:
