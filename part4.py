@@ -176,7 +176,7 @@ def get_validation(M_val):
     return xs, y_s
         
 
-def part2():
+def part2(plot=False):
     x = tf.placeholder(tf.float32, [None, IMG_DIM*IMG_DIM*384])
     
     W = tf.Variable(tf.random_normal([IMG_DIM*IMG_DIM*384, 6], stddev=0.01))*10.
@@ -245,7 +245,6 @@ def part2():
             snapshot["W"] = sess.run(W)
             snapshot["b"] = sess.run(b)
 
-            
             # for i in range(0, 300, 10):
             #     print(i)
             #     img = snapshot["W0"][:,i].reshape((IMG_DIM, IMG_DIM, 3))
@@ -256,29 +255,29 @@ def part2():
         
             cPickle.dump(snapshot,  open("ConvOuput"+str(i)+".pkl", "w"))
         
-    
-    plt.figure(1)
-    plt.plot(acc_train)
-    plt.title('Iterations vs. Training Accuracy')
-    plt.xlabel('Iteration')
-    plt.ylabel('Accuracy')
-    savefig('p2Iteration_vs_Training')
-    
-    
-    plt.figure(2)
-    plt.plot(acc_val)
-    plt.title('Iterations vs. Validation Accuracy')
-    plt.xlabel('Iteration')
-    plt.ylabel('Accuracy')
-    savefig('p2Iteration_vs_Validation')
-    
-    
-    plt.figure(3)
-    plt.plot(acc_test)
-    plt.title('Iterations vs. Test Accuracy')
-    plt.xlabel('Iteration')
-    plt.ylabel('Accuracy')
-    savefig('p2Iteration_vs_Test')
+    if plot == True:
+        plt.figure(1)
+        plt.plot(acc_train)
+        plt.title('Iterations vs. Training Accuracy')
+        plt.xlabel('Iteration')
+        plt.ylabel('Accuracy')
+        savefig('p2Iteration_vs_Training')
+        
+        
+        plt.figure(2)
+        plt.plot(acc_val)
+        plt.title('Iterations vs. Validation Accuracy')
+        plt.xlabel('Iteration')
+        plt.ylabel('Accuracy')
+        savefig('p2Iteration_vs_Validation')
+        
+        
+        plt.figure(3)
+        plt.plot(acc_test)
+        plt.title('Iterations vs. Test Accuracy')
+        plt.xlabel('Iteration')
+        plt.ylabel('Accuracy')
+        savefig('p2Iteration_vs_Test')
     
     return W, b
     
@@ -300,7 +299,7 @@ def conv(input, kernel, biases, k_h, k_w, c_o, s_h, s_w,  padding="VALID", group
         conv = tf.concat(3, output_groups)
     return  tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape().as_list())
     
-def part4():
+def part4(for_part5=False):
     # image we want to test
     x_dummy = (random.random((1,)+ xdim)/255.).astype(float32)
     i = x_dummy.copy()
@@ -391,16 +390,44 @@ def part4():
     
     output = sess.run(y)
     
-    
-    # correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
-    # accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    # test_xs, test_ys = get_test(M_test)
-    # accuracy.eval(feed_dict={x: test_xs, y_: test_ys}, session=sess)
+    if for_part5:
+        print "for part 5"
+        snapshot = {}
+        snapshot["Y"] = sess.run(y)
+        snapshot["X"] = i/255.
+        cPickle.dump(snapshot,  open("Part4Y"+".pkl", "w"))
+        
+        return x, y # return tensorflow
+
     
     inds = argsort(sess.run(y))[0,:]
     for i in range(6):
         print class_names[inds[-1-i]], output[0, inds[-1-i]]
+
+def part5():
+    x, y = part4(for_part5=True)
+    y_0 = tf.slice(y, [0,0], [1,1])
     
-    print i
+    init = tf.initialize_all_variables()
+    sess = tf.Session()
+    sess.run(init)
+    
+
+
+    grad = tf.gradients(y_0, x)[0] # grad is list >> list of 1 element
+    grad = sess.run(grad)
+    grad = grad.clip(min = 0)
+    
+    imshow(grad[0]*500)
+    show()
+    
+    
+    
+
+    
+    
 if __name__ == "__main__":
-    part4()
+    part2(plot=True)
+    #part4()
+    #part5()
+    
